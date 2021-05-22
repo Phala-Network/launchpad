@@ -2,12 +2,12 @@ import { FlexGrid, FlexGridItem } from 'baseui/flex-grid'
 import { useRouter } from 'next/router'
 import React from 'react'
 import { useQuery } from 'react-query'
-import { AnnualizedReturnRateChart } from '../../components/charts/annualizedReturnRateChart'
-import { CommissionRateChart } from '../../components/charts/commissionRateChart'
-import { RewardChart } from '../../components/charts/rewardChart'
-import { StakeChart } from '../../components/charts/stakeChart'
-import { WorkerInformation } from '../../components/workerByStash/information'
+import { AnnualizedReturnRateChart } from '../../components/workerByStash/annualizedReturnRateChart'
+import { CommissionRateChart } from '../../components/workerByStash/commissionRateChart'
+import { RewardChart } from '../../components/workerByStash/rewardChart'
+import { StakeChart } from '../../components/workerByStash/stakeChart'
 import { getWorkerByStash } from '../../libs/apis/workers'
+import { WorkerInformation } from '../../components/workerByStash/information'
 
 const WorkerByStashPage: React.FC = () => {
     const router = useRouter()

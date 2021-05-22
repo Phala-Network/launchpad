@@ -11,7 +11,7 @@ interface DepositQueryResult {
 
 const queryKey = uuidv4()
 
-export function useDepositQuery(accountId?: AccountId | string): UseQueryResult<BalanceOf> {
+export function useDepositQuery(accountId?: AccountId): UseQueryResult<BalanceOf> {
     const { api } = useApiPromise()
     return useQuery(
         [queryKey, accountId, api],

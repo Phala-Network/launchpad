@@ -2,25 +2,16 @@ import { GetWorkerResult } from '..'
 import { Api, requestSuccess } from '../proto'
 import { FindWorkerFilters } from '.'
 
-export type SortingField = 'accumulatedStake' | 'apy' | 'commission' | 'machineScore' | 'profitLastMonth' | 'taskScore'
-
-export const findWorkersByStash = async ({ filters, page, pageSize, sort, sortAsc, stash }: {
-    filters: FindWorkerFilters
-    page: number
-    pageSize: number
-    sort?: SortingField
-    sortAsc?: boolean
-    stash?: string
-}): Promise<GetWorkerResult> => {
+export const findWorkersByStash: (
+    filters: FindWorkerFilters, page: number, pageSize: number, stash?: string
+) => Promise<GetWorkerResult> = async (filters, page, pageSize, stash) => {
     const workerRequest: Api.IWorkerRequest = {
         filterCommissionLessThanLimit: filters.commissionRateLessThan20,
         filterRunning: filters.mining,
         filterStakeLessThanMinimum: filters.stakePending,
         filterStashAccounts: stash === undefined ? [] : [stash],
         page,
-        pageSize,
-        sortAsc,
-        sortFieldName: sort
+        pageSize
     }
 
     const payload = Api.CommonRequest.encode(

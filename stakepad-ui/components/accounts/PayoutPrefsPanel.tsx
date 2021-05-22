@@ -1,4 +1,4 @@
-import { decodeAddress } from '@polkadot/keyring'
+import { decodeAddress, encodeAddress } from '@polkadot/keyring'
 import { AccountId } from '@polkadot/types/interfaces'
 import { Button } from 'baseui/button'
 import { FormControl } from 'baseui/form-control'
@@ -6,12 +6,10 @@ import { Alert as AlertIcon, Check as CheckIcon } from 'baseui/icon'
 import { Input } from 'baseui/input'
 import { KIND as NotificationKind, Notification } from 'baseui/notification'
 import { Radio, RadioGroup } from 'baseui/radio'
-import { useRouter } from 'next/router'
 import React, { ReactElement, useEffect, useMemo, useState } from 'react'
 import { setPayoutPrefs } from '../../libs/extrinsics/payoutPrefs'
 import { useApiPromise } from '../../libs/polkadot'
 import { ExtrinsicStatus } from '../../libs/polkadot/extrinsics'
-import { useAddressNormalizer } from '../../libs/queries/useAddressNormalizer'
 import { useStashInfoQuery } from '../../libs/queries/useStashInfoQuery'
 import { ExtrinsicStatusNotification } from '../extrinsics/ExtrinsicStatusNotification'
 import { ValidatedAccountInput } from './AccountInput'
@@ -19,15 +17,14 @@ import { InjectedAccountSelect } from './AccountSelect'
 
 export const PayoutPrefsPanel = ({ defaultAddress }: { defaultAddress?: string }): ReactElement => {
     const { api } = useApiPromise()
-    const normalizeAddress = useAddressNormalizer(api)
-    const router = useRouter()
 
     const [account, setAccount] = useState<string | undefined>(defaultAddress) // selected stash account
 
     /* current on-chain states */
 
-    const { data: stashInfo } = useStashInfoQuery(account, api)
-    const currentPayoutTarget = useMemo(() => stashInfo === undefined ? undefined : normalizeAddress(stashInfo.payoutPrefs.target), [normalizeAddress, stashInfo])
+    const accountId = useMemo(() => account === undefined ? undefined : decodeAddress(account) as AccountId, [account])
+    const { data: stashInfo } = useStashInfoQuery(accountId, api)
+    const currentPayoutTarget = useMemo(() => stashInfo === undefined ? undefined : encodeAddress(stashInfo.payoutPrefs.target), [stashInfo])
 
     /* target on-chain states */
 
@@ -86,8 +83,6 @@ export const PayoutPrefsPanel = ({ defaultAddress }: { defaultAddress?: string }
             commissionRate: newCommissionRate,
             statusCallback: (status: ExtrinsicStatus) => setExtrinsicStatus(status),
             target: decodeAddress(newPayoutTarget) as AccountId
-        }).then(() => {
-            router.reload()
         }).catch(error => {
             setExtrinsicStatus('invalid')
             setLastError((error as Error)?.message ?? error)

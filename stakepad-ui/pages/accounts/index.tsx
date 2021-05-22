@@ -1,4 +1,4 @@
-import { decodeAddress } from '@polkadot/keyring'
+import { decodeAddress, encodeAddress } from '@polkadot/keyring'
 import { AccountId } from '@polkadot/types/interfaces'
 import { Button, KIND as ButtonKind, SIZE as ButtonSize } from 'baseui/button'
 import { Overflow as OverflowIcon } from 'baseui/icon'
@@ -10,16 +10,13 @@ import { useRouter } from 'next/router'
 import React, { PropsWithChildren, ReactElement, useMemo } from 'react'
 import { useApiPromise, useWeb3 } from '../../libs/polkadot'
 import { useAccountQuery } from '../../libs/queries/useAccountQuery'
-import { useAddressNormalizer } from '../../libs/queries/useAddressNormalizer'
 import { useDepositQuery } from '../../libs/queries/useBalanceQuery'
-import { useStakerPendingTotalQuery } from '../../libs/queries/usePendingStakeQuery'
-import { useStakerPositionTotalQuery } from '../../libs/queries/useStakeQuery'
 import { useStashInfoQuery } from '../../libs/queries/useStashInfoQuery'
 
 const LoadingSpinner = (): ReactElement => <StyledSpinnerNext $size={SpinnerSize.small} />
 
 const LoadingColumn = ({ children }: PropsWithChildren<{}>): ReactElement => {
-    if (children === undefined || children === false) {
+    if (children === undefined) {
         return (<LoadingSpinner />)
     }
 
@@ -33,12 +30,12 @@ const LoadingColumn = ({ children }: PropsWithChildren<{}>): ReactElement => {
 const PayoutAddressColumn = ({ accountId }: { accountId: AccountId }): ReactElement => {
     const { api } = useApiPromise()
     const { data } = useStashInfoQuery(accountId, api)
-    const normalizeAddress = useAddressNormalizer(api)
-
     const target = data?.payoutPrefs.target
-    const normalized = useMemo(() => target !== undefined && normalizeAddress(target), [normalizeAddress, target])
-
-    return (<LoadingColumn>{normalized}</LoadingColumn>)
+    if (target !== undefined) {
+        return (<LoadingColumn>{encodeAddress(target)}</LoadingColumn>)
+    } else {
+        return (<LoadingColumn />)
+    }
 }
 
 const AccountBalanceColumn = ({ accountId }: { accountId: AccountId }): ReactElement => {
@@ -49,29 +46,6 @@ const AccountBalanceColumn = ({ accountId }: { accountId: AccountId }): ReactEle
 const DepositBalanceColumn = ({ accountId }: { accountId: AccountId }): ReactElement => {
     const { data } = useDepositQuery(accountId)
     return (<LoadingColumn>{data?.toHuman()}</LoadingColumn>)
-}
-
-const StakerPositionTotalColumn = ({ accountId }: { accountId: AccountId }): ReactElement => {
-    const { api } = useApiPromise()
-    const positions = useStakerPositionTotalQuery(accountId, api)
-    const pendings = useStakerPendingTotalQuery(accountId, api)
-
-    const pendingSign = pendings?.balance.isPositive() === true ? '+' : ''
-    const pendingText = pendings?.balance.isZero() === false ? ` (${pendingSign}${pendings.balance.toString()} pending)` : ''
-    return (
-        <LoadingColumn>
-            {(positions !== undefined) && (`${positions.balance.toString()}${pendingText} PHA`)}
-        </LoadingColumn>
-    )
-}
-
-const StakerPositionCountColumn = ({ accountId }: { accountId: AccountId }): ReactElement => {
-    const { api } = useApiPromise()
-    const positions = useStakerPositionTotalQuery(accountId, api)
-    const pendings = useStakerPendingTotalQuery(accountId, api)
-
-    const pendingText = pendings !== undefined && pendings.count > 0 ? ` (${pendings.count} pending)` : ''
-    return (<LoadingColumn>{(positions !== undefined) && `${positions.count.toString()}${pendingText}`}</LoadingColumn>)
 }
 
 interface OperationItemMenuItem {
@@ -110,22 +84,10 @@ const OperationMenu = ({ address }: { address: string }): ReactElement => {
     )
 }
 
-interface AccountTableItem {
-    accountId: AccountId
-    address: string
-}
-
 const Accounts = (): ReactElement => {
-    const { api } = useApiPromise()
     const { accounts, readystate: web3Readystate } = useWeb3()
-    const normalizeAddress = useAddressNormalizer(api)
 
-    const accountIds = useMemo<AccountTableItem[]>(() => (
-        accounts?.map(account => ({
-            accountId: decodeAddress(account.address) as AccountId,
-            address: normalizeAddress(account.address)
-        })) ?? []
-    ), [accounts, normalizeAddress])
+    const accountIds = useMemo(() => accounts?.map(account => decodeAddress(account.address)) ?? [], [accounts])
 
     return (
         <>
@@ -136,31 +98,31 @@ const Accounts = (): ReactElement => {
                 loadingMessage="正在等待 polkadot{.js} 浏览器扩展"
             >
                 <TableBuilderColumn header="账户">
-                    {(item: AccountTableItem) => item.address}
+                    {(accountId: AccountId) => encodeAddress(accountId)}
                 </TableBuilderColumn>
 
                 <TableBuilderColumn header="收益地址">
-                    {(item: AccountTableItem) => <PayoutAddressColumn accountId={item.accountId} />}
+                    {(accountId: AccountId) => <PayoutAddressColumn accountId={accountId} />}
                 </TableBuilderColumn>
 
                 <TableBuilderColumn header="账户钱包余额">
-                    {(item: AccountTableItem) => <AccountBalanceColumn accountId={item.accountId} />}
+                    {(accountId: AccountId) => <AccountBalanceColumn accountId={accountId} />}
                 </TableBuilderColumn>
 
                 <TableBuilderColumn header="挖矿储值余额">
-                    {(item: AccountTableItem) => <DepositBalanceColumn accountId={item.accountId} />}
+                    {(accountId: AccountId) => <DepositBalanceColumn accountId={accountId} />}
                 </TableBuilderColumn>
 
                 <TableBuilderColumn header="抵押总额">
-                    {(item: AccountTableItem) => <StakerPositionTotalColumn accountId={item.accountId} />}
+                    {() => <LoadingSpinner />}
                 </TableBuilderColumn>
 
                 <TableBuilderColumn header="抵押机器数量">
-                    {(item: AccountTableItem) => <StakerPositionCountColumn accountId={item.accountId} />}
+                    {() => <LoadingSpinner />}
                 </TableBuilderColumn>
 
                 <TableBuilderColumn>
-                    {(item: AccountTableItem) => <OperationMenu address={item.address} />}
+                    {(accountId: AccountId) => <OperationMenu address={encodeAddress(accountId)} />}
                 </TableBuilderColumn>
             </TableBuilder>
         </>

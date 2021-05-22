@@ -1,10 +1,10 @@
 import { ApiPromise } from '@polkadot/api'
-import { AccountId, BalanceOf } from '@polkadot/types/interfaces'
+import { BalanceOf } from '@polkadot/types/interfaces'
+import { encodeAddress } from '@polkadot/util-crypto'
 import { Decimal } from 'decimal.js'
 import { useQuery, UseQueryResult } from 'react-query'
 import { v4 as uuidv4 } from 'uuid'
 import { bnToDecimal } from '../utils/balances'
-import { useAddressNormalizer } from './useAddressNormalizer'
 import { useDecimalJsTokenDecimalMultiplier } from './useTokenDecimals'
 
 interface PendingStake {
@@ -14,21 +14,15 @@ interface PendingStake {
     balance: Decimal
 }
 
-interface UseStakerPendingTotalQueryResult {
-    balance: Decimal
-    count: number
-}
-
 const decimalZero = new Decimal(0)
 
 const StakerPendingQueryKey = uuidv4()
 
-export const useStakerPendingsQuery = (staker?: AccountId | string, api?: ApiPromise): UseQueryResult<Record<string, PendingStake>> => {
-    const normalizeAddress = useAddressNormalizer(api)
-    const tokenDecimals = useDecimalJsTokenDecimalMultiplier(api)
+export const useStakerPendingsQuery = (staker?: string, api?: ApiPromise): UseQueryResult<Record<string, PendingStake>> => {
+    const tokenDecimals = useDecimalJsTokenDecimalMultiplier()
 
     return useQuery(
-        [StakerPendingQueryKey, staker, api, normalizeAddress],
+        [StakerPendingQueryKey, staker, api],
         async () => {
             if (api === undefined || staker === undefined || tokenDecimals === undefined) { return undefined }
 
@@ -39,13 +33,13 @@ export const useStakerPendingsQuery = (staker?: AccountId | string, api?: ApiPro
                 const result: Record<string, PendingStake> = {}
                 stakes.forEach(([{ args: [, miner] }, balance]) => {
                     const stake = balance.unwrapOrDefault()
-                    result[normalizeAddress(miner)] = {
+                    result[encodeAddress(miner)] = {
                         balance: bnToDecimal(stake, tokenDecimals),
                         staking: stake
                     }
                 })
                 unstakes.forEach(([{ args: [, miner] }, balance]) => {
-                    const address = normalizeAddress(miner)
+                    const address = encodeAddress(miner)
                     const unstake = balance.unwrapOrDefault()
                     const deciamlUnstake = bnToDecimal(unstake, tokenDecimals)
 
@@ -61,18 +55,6 @@ export const useStakerPendingsQuery = (staker?: AccountId | string, api?: ApiPro
             })
         }
     )
-}
-
-export const useStakerPendingTotalQuery = (staker?: AccountId | string, api?: ApiPromise): UseStakerPendingTotalQueryResult | undefined => {
-    const { data: pendings } = useStakerPendingsQuery(staker, api)
-
-    if (pendings === undefined) { return undefined }
-
-    const entries = Object.entries(pendings).filter(([, { balance }]) => !balance.isZero())
-    return {
-        balance: entries.reduce((acc, [, { balance }]) => acc.add(balance), decimalZero),
-        count: entries.length
-    }
 }
 
 export const useStakePendingQuery = (staker?: string, miner?: string, api?: ApiPromise): PendingStake | undefined => {

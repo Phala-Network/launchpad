@@ -2,7 +2,6 @@ import { Balance } from '@polkadot/types/interfaces'
 import { Input } from 'baseui/input'
 import { Decimal } from 'decimal.js'
 import { ReactElement, useCallback, useEffect, useMemo, useState } from 'react'
-import { useApiPromise } from '../../libs/polkadot'
 import { useDecimalJsTokenDecimalMultiplier } from '../../libs/queries/useTokenDecimals'
 import { bnToDecimal } from '../../libs/utils/balances'
 
@@ -16,8 +15,7 @@ export const PositionInput = ({ current: balanceCurrent, disabled, onChange, pen
     disabled?: boolean
     onChange: (newPosition?: Decimal) => void
 }): ReactElement => {
-    const { api } = useApiPromise()
-    const tokenDecimals = useDecimalJsTokenDecimalMultiplier(api)
+    const tokenDecimals = useDecimalJsTokenDecimalMultiplier()
 
     const current = useMemo(() => {
         return balanceCurrent === undefined || tokenDecimals === undefined
